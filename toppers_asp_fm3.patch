@@ -1,0 +1,792 @@
+--- arch/arm_m_gcc/common/core_support.S	Thu Jan 15 17:52:48 1970
++++ arch/arm_m_gcc/common/core_support.S	Thu Jan 15 17:52:48 1970
+@@ -41,6 +41,7 @@
+ /*
+  *  プロセッサ依存モジュール アセンブリ言語部（ARM-M用）
+  */
++#define DEBUG_NOW
+ 
+ #define TOPPERS_MACRO_ONLY
+ #define UINT_C(val)		(val)		/* uint_t型の定数を作るマクロ */
+@@ -669,7 +670,9 @@
+ #else
+ 	cpsid i               /* PRIMASK をセット */
+ 	msr   basepri, r4     /* 全割込み許可 */ 
++#ifndef DEBUG_NOW
+ 	wfi
++#endif
+ 	cpsie i               /* PRIMASK をクリア（割込みを受け付ける） */
+ 	msr   basepri, r5     /* CPUロック状態へ */ 
+ #endif /* TOPPERS_CUSTOM_IDLE */
+--- arch/gcc/tool_stddef.h	Thu Jan 15 17:52:48 1970
++++ arch/gcc/tool_stddef.h	Thu Jan 15 17:52:48 1970
+@@ -176,6 +176,13 @@
+ #define INT_LEAST8_MIN		INT8_MIN
+ #define UINT_LEAST8_MAX		INT8_MAX
+ 
++
++#else /* TOPPERS_STDINT_TYPE1 */
++
++#ifndef TOPPERS_MACRO_ONLY
++#include <stdint.h>
++#endif
++
+ #endif /* TOPPERS_STDINT_TYPE1 */
+ 
+ /*
+--- include/t_syslog.h	Thu Jan 15 17:52:48 1970
++++ include/t_syslog.h	Thu Jan 15 17:52:48 1970
+@@ -277,11 +277,6 @@
+ {
+ }
+ 
+-Inline void
+-syslog(uint_t prio, const char *format, ...)
+-{
+-}
+-
+ #endif /* TOPPERS_OMIT_SYSLOG */
+ 
+ /*
+--- library/log_output.c	Thu Jan 15 17:52:48 1970
++++ library/log_output.c	Thu Jan 15 17:52:48 1970
+@@ -46,6 +46,7 @@
+ #include <t_stddef.h>
+ #include <t_syslog.h>
+ 
++#ifndef TOPPERS_OMIT_SYSLOG
+ /*
+  *  数値を文字列に変換
+  */
+@@ -87,10 +88,13 @@
+ static const char raddec[] = "0123456789";
+ static const char radhex[] = "0123456789abcdef";
+ static const char radHEX[] = "0123456789ABCDEF";
++#endif	//TOPPERS_OMIT_SYSLOG
+ 
+ void
+ syslog_printf(const char *format, const intptr_t *p_args, void (*putc)(char_t))
+ {
++#ifndef TOPPERS_OMIT_SYSLOG
++
+ 	char		c;
+ 	uint_t		width;
+ 	bool_t		padzero;
+@@ -160,6 +164,7 @@
+ 			break;
+ 		}
+ 	}
++#endif	//TOPPERS_OMIT_SYSLOG
+ }
+ 
+ /*
+@@ -168,6 +173,8 @@
+ void
+ syslog_print(const SYSLOG *p_syslog, void (*putc)(char_t))
+ {
++#ifndef TOPPERS_OMIT_SYSLOG
++
+ 	switch (p_syslog->logtype) {
+ 	case LOG_TYPE_COMMENT:
+ 		syslog_printf((const char *)(p_syslog->loginfo[0]),
+@@ -178,6 +185,7 @@
+ 								&(p_syslog->loginfo[0]), putc);
+ 		break;
+ 	}
++#endif	//TOPPERS_OMIT_SYSLOG
+ }
+ 
+ /*
+@@ -186,9 +194,12 @@
+ void
+ syslog_lostmsg(uint_t lost, void (*putc)(char_t))
+ {
++#ifndef TOPPERS_OMIT_SYSLOG
++
+ 	intptr_t	lostinfo[1];
+ 
+ 	lostinfo[0] = (intptr_t) lost;
+ 	syslog_printf("%d messages are lost.", lostinfo, putc);
+ 	(*putc)('\n');
++#endif	//TOPPERS_OMIT_SYSLOG
+ }
+--- library/strerror.c	Thu Jan 15 17:52:48 1970
++++ library/strerror.c	Thu Jan 15 17:52:48 1970
+@@ -49,6 +49,7 @@
+ const char *
+ itron_strerror(ER ercd)
+ {
++#ifndef TOPPERS_OMIT_SYSLOG
+ 	switch (MERCD(ercd)) {
+ 	case E_OK:
+ 		return("E_OK");
+@@ -107,4 +108,7 @@
+ 	default:
+ 		return("unknown error");
+ 	}
++#else
++	return "";
++#endif	//TOPPERS_OMIT_SYSLOG
+ }
+--- syssvc/banner.c	Thu Jan 15 17:52:48 1970
++++ syssvc/banner.c	Thu Jan 15 17:52:48 1970
+@@ -45,9 +45,11 @@
+  */
+ 
+ #include <kernel.h>
++#ifndef TOPPERS_OMIT_SYSLOG
+ #include <t_syslog.h>
+ #include "target_syssvc.h"
+ 
++
+ #ifndef TARGET_COPYRIGHT
+ #define TARGET_COPYRIGHT
+ #endif /* TARGET_COPYRIGHT */
+@@ -61,11 +63,15 @@
+ "            Graduate School of Information Science, Nagoya Univ., JAPAN\n"
+ TARGET_COPYRIGHT;
+ 
++#endif	//TOPPERS_OMIT_SYSLOG
++
+ void
+ print_banner(intptr_t exinf)
+ {
++#ifndef TOPPERS_OMIT_SYSLOG
+ 	syslog_3(LOG_NOTICE, banner,
+ 				(TKERNEL_PRVER >> 12) & 0x0fU,
+ 				(TKERNEL_PRVER >> 4) & 0xffU,
+ 				TKERNEL_PRVER & 0x0fU);
++#endif	//TOPPERS_OMIT_SYSLOG
+ }
+--- syssvc/logtask.c	Thu Jan 15 17:52:48 1970
++++ syssvc/logtask.c	Thu Jan 15 17:52:48 1970
+@@ -45,12 +45,14 @@
+  */
+ 
+ #include <kernel.h>
++#ifndef TOPPERS_OMIT_SYSLOG
+ #include <t_syslog.h>
+ #include <log_output.h>
+ #include "syssvc/serial.h"
+ #include "syssvc/syslog.h"
+ #include "logtask.h"
+ 
++
+ /*
+  *  システムログタスクの出力先のポートID
+  */
+@@ -64,6 +66,7 @@
+ {
+ 	serial_wri_dat(logtask_portid, &c, 1);
+ }
++#endif	//TOPPERS_OMIT_SYSLOG
+ 
+ /*
+  *  システムログ出力の待ち合わせ
+@@ -71,6 +74,7 @@
+ ER
+ logtask_flush(uint_t count)
+ {
++#ifndef TOPPERS_OMIT_SYSLOG
+ 	T_SYSLOG_RLOG	rlog;
+ 	T_SERIAL_RPOR	rpor;
+ 	ER				ercd, rercd;
+@@ -118,6 +122,9 @@
+ 
+   error_exit:
+ 	return(ercd);
++#else
++	return E_OK;
++#endif
+ }
+ 
+ /*
+@@ -126,6 +133,7 @@
+ void
+ logtask_main(intptr_t exinf)
+ {
++#ifndef TOPPERS_OMIT_SYSLOG
+ 	SYSLOG	syslog;
+ 	uint_t	lost;
+ 	ER_UINT	rercd;
+@@ -153,6 +161,7 @@
+ 		}
+ 		dly_tsk(LOGTASK_INTERVAL);
+ 	}
++#endif	//TOPPERS_OMIT_SYSLOG
+ }
+ 
+ /*
+@@ -161,6 +170,7 @@
+ void
+ logtask_terminate(intptr_t exinf)
+ {
++#ifndef TOPPERS_OMIT_SYSLOG
+ 	char_t	c;
+ 	SYSLOG	syslog;
+ 	bool_t	msgflg = false;
+@@ -195,4 +205,5 @@
+ 			target_fput_log('\n');
+ 		}
+ 	}
++#endif	//TOPPERS_OMIT_SYSLOG
+ }
+--- syssvc/serial.c	Thu Jan 15 17:52:48 1970
++++ syssvc/serial.c	Thu Jan 15 17:52:48 1970
+@@ -51,6 +51,10 @@
+ #include "serial.h"
+ #include "kernel_cfg.h"
+ 
++#if !defined(SERIAL_RCV_SEM1)
++#define NO_SERIAL
++#endif
++
+ /*
+  *  バッファサイズのデフォルト値とバッファの定義
+  */
+@@ -62,8 +66,10 @@
+ #define	SERIAL_SND_BUFSZ1	256			/* ポート1の送信バッファサイズ */
+ #endif /* SERIAL_SND_BUFSZ1 */
+ 
++#ifndef NO_SERIAL
+ static char_t	rcv_buffer1[SERIAL_RCV_BUFSZ1];
+ static char_t	snd_buffer1[SERIAL_SND_BUFSZ1];
++#endif	//NO_SERIAL
+ 
+ #if TNUM_PORT >= 2						/* ポート2に関する定義 */
+ 
+@@ -75,8 +81,10 @@
+ #define	SERIAL_SND_BUFSZ2	256			/* ポート2の送信バッファサイズ */
+ #endif /* SERIAL_SND_BUFSZ2 */
+ 
++#ifndef NO_SERIAL
+ static char_t	rcv_buffer2[SERIAL_RCV_BUFSZ2];
+ static char_t	snd_buffer2[SERIAL_SND_BUFSZ2];
++#endif	//NO_SERIAL
+ 
+ #endif /* TNUM_PORT >= 2 */
+ 
+@@ -90,8 +98,10 @@
+ #define	SERIAL_SND_BUFSZ3	256			/* ポート3の送信バッファサイズ */
+ #endif /* SERIAL_SND_BUFSZ3 */
+ 
++#ifndef NO_SERIAL
+ static char_t	rcv_buffer3[SERIAL_RCV_BUFSZ3];
+ static char_t	snd_buffer3[SERIAL_SND_BUFSZ3];
++#endif	//NO_SERIAL
+ 
+ #endif /* TNUM_PORT >= 3 */
+ 
+@@ -105,8 +115,10 @@
+ #define	SERIAL_SND_BUFSZ4	256			/* ポート4の送信バッファサイズ */
+ #endif /* SERIAL_SND_BUFSZ4 */
+ 
++#ifndef NO_SERIAL
+ static char_t	rcv_buffer4[SERIAL_RCV_BUFSZ4];
+ static char_t	snd_buffer4[SERIAL_SND_BUFSZ4];
++#endif	//NO_SERIAL
+ 
+ #endif /* TNUM_PORT >= 4 */
+ 
+@@ -119,6 +131,7 @@
+ #define BUFCNT_STOP(bufsz)		((bufsz) * 3 / 4)	/* STOPを送る基準文字数 */
+ #define BUFCNT_START(bufsz)		((bufsz) / 2)		/* STARTを送る基準文字数 */
+ 
++#ifndef NO_SERIAL
+ /*
+  *  シリアルポート初期化ブロック
+  */
+@@ -196,6 +209,10 @@
+ #define SVC(exp, ercd_exp) \
+ 				{ if ((exp) < 0) { ercd = (ercd_exp); goto error_exit; }}
+ 
++#endif	//NO_SERIAL
++
++
++#ifndef NO_SERIAL
+ /*
+  *  E_SYSエラーの生成
+  */
+@@ -221,6 +238,7 @@
+ 		return(E_SYS);
+ 	}
+ }
++#endif	//NO_SERIAL
+ 
+ /*
+  *  シリアルインタフェースドライバの初期化ルーチン
+@@ -228,6 +246,7 @@
+ void
+ serial_initialize(intptr_t exinf)
+ {
++#ifndef NO_SERIAL
+ 	uint_t	i;
+ 	SPCB	*p_spcb;
+ 
+@@ -235,6 +254,7 @@
+ 		p_spcb->p_spinib = &(spinib_table[i]);
+ 		p_spcb->openflag = false;
+ 	}
++#endif	//NO_SERIAL
+ }
+ 
+ /*
+@@ -243,6 +263,7 @@
+ ER
+ serial_opn_por(ID portid)
+ {
++#ifndef NO_SERIAL
+ 	SPCB	*p_spcb;
+ 	ER		ercd;
+ 
+@@ -306,6 +327,9 @@
+ 
+   error_exit:
+ 	return(ercd);
++#else	//NO_SERIAL
++	return E_OK;
++#endif	//NO_SERIAL
+ }
+ 
+ /*
+@@ -314,6 +338,7 @@
+ ER
+ serial_cls_por(ID portid)
+ {
++#ifndef NO_SERIAL
+ 	SPCB	*p_spcb;
+ 	ER		ercd;
+ 	bool_t	eflag = false;
+@@ -367,6 +392,9 @@
+ 
+   error_exit:
+ 	return(ercd);
++#else	//NO_SERIAL
++	return E_OK;
++#endif	//NO_SERIAL
+ }
+ 
+ /*
+@@ -377,6 +405,7 @@
+  *  レジスタが空いたことを通知するコールバック関数を許可し，falseを返す．
+  *  この関数は，CPUロック状態で呼び出される．
+  */
++#ifndef NO_SERIAL
+ Inline bool_t
+ serial_snd_chr(SPCB *p_spcb, char_t c)
+ {
+@@ -388,7 +417,9 @@
+ 		return(false);
+ 	}
+ }
++#endif	//NO_SERIAL
+ 
++#ifndef NO_SERIAL
+ /*
+  *  シリアルポートへの1文字送信
+  */
+@@ -434,6 +465,7 @@
+   error_exit:
+ 	return(ercd);
+ }
++#endif	//NO_SERIAL
+ 
+ /*
+  *  シリアルポートへの文字列送信（サービスコール）
+@@ -441,6 +473,7 @@
+ ER_UINT
+ serial_wri_dat(ID portid, const char_t *buf, uint_t len)
+ {
++#ifndef NO_SERIAL
+ 	SPCB	*p_spcb;
+ 	bool_t	buffer_full;
+ 	uint_t	wricnt = 0U;
+@@ -478,8 +511,12 @@
+ 
+   error_exit:
+ 	return(wricnt > 0U ? (ER_UINT) wricnt : ercd);
++#else	//NO_SERIAL
++	return E_OK;
++#endif	//NO_SERIAL
+ }
+ 
++#ifndef NO_SERIAL
+ /*
+  *  シリアルポートからの1文字受信
+  */
+@@ -516,6 +553,7 @@
+   error_exit:
+ 	return(ercd);
+ }
++#endif	//NO_SERIAL
+ 
+ /*
+  *  シリアルポートからの文字列受信（サービスコール）
+@@ -523,6 +561,7 @@
+ ER_UINT
+ serial_rea_dat(ID portid, char_t *buf, uint_t len)
+ {
++#ifndef NO_SERIAL
+ 	SPCB	*p_spcb;
+ 	bool_t	buffer_empty;
+ 	uint_t	reacnt = 0U;
+@@ -575,6 +614,9 @@
+ 
+   error_exit:
+ 	return(reacnt > 0U ? (ER_UINT) reacnt : ercd);
++#else	//NO_SERIAL
++	return 0;
++#endif	//NO_SERIAL
+ }
+ 
+ /*
+@@ -583,6 +625,7 @@
+ ER
+ serial_ctl_por(ID portid, uint_t ioctl)
+ {
++#ifndef NO_SERIAL
+ 	SPCB	*p_spcb;
+ 
+ 	if (sns_dpn()) {				/* コンテキストのチェック */
+@@ -602,6 +645,9 @@
+ 
+ 	p_spcb->ioctl = ioctl;
+ 	return(E_OK);
++#else	//NO_SERIAL
++	return E_OK;
++#endif	//NO_SERIAL
+ }
+ 
+ /*
+@@ -610,6 +656,7 @@
+ ER
+ serial_ref_por(ID portid, T_SERIAL_RPOR *pk_rpor)
+ {
++#ifndef NO_SERIAL
+ 	SPCB	*p_spcb;
+ 
+ 	if (sns_dpn()) {				/* コンテキストのチェック */
+@@ -630,6 +677,9 @@
+ 	pk_rpor->reacnt = p_spcb->rcv_count;
+ 	pk_rpor->wricnt = p_spcb->snd_count;
+ 	return(E_OK);
++#else	//NO_SERIAL
++	return E_OK;
++#endif	//NO_SERIAL
+ }
+ 
+ /*
+@@ -638,6 +688,7 @@
+ void
+ sio_irdy_snd(intptr_t exinf)
+ {
++#ifndef NO_SERIAL
+ 	SPCB	*p_spcb;
+ 
+ 	p_spcb = (SPCB *) exinf;
+@@ -668,6 +719,7 @@
+ 		 */
+ 		sio_dis_cbr(p_spcb->p_siopcb, SIO_RDY_SND);
+ 	}
++#endif	//NO_SERIAL
+ }
+ 
+ /*
+@@ -676,6 +728,7 @@
+ void
+ sio_irdy_rcv(intptr_t exinf)
+ {
++#ifndef NO_SERIAL
+ 	SPCB	*p_spcb;
+ 	char_t	c;
+ 
+@@ -741,6 +794,7 @@
+ 			p_spcb->rcv_stopped = true;
+ 		}
+ 	}
++#endif	//NO_SERIAL
+ }
+ 
+ /*
+@@ -749,6 +803,7 @@
+ bool_t
+ serial_get_chr(ID portid, char_t *p_c)
+ {
++#ifndef NO_SERIAL
+ 	SPCB	*p_spcb;
+ 
+ 	if (1 <= portid && portid <= TNUM_PORT) {	/* ポート番号のチェック */
+@@ -763,4 +818,7 @@
+ 		}
+ 	}
+ 	return(false);
++#else	//NO_SERIAL
++	return true;
++#endif	//NO_SERIAL
+ }
+--- syssvc/syslog.c	Thu Jan 15 17:52:48 1970
++++ syssvc/syslog.c	Thu Jan 15 17:52:48 1970
+@@ -86,6 +86,7 @@
+ #define LOG_SYSLOG_REF_LOG_LEAVE(pk_rlog)
+ #endif /* LOG_SYSLOG_REF_LOG_LEAVE */
+ 
++#ifndef TOPPERS_OMIT_SYSLOG
+ /*
+  *  現在のシステム時刻
+  *
+@@ -109,18 +110,22 @@
+ static uint_t	syslog_logmask;			/* ログバッファに記録すべき重要度 */
+ static uint_t	syslog_lowmask_not;		/* 低レベル出力すべき重要度（反転）*/
+ 
++#endif
++
+ /*
+  *  システムログ機能の初期化
+  */
+ void
+ syslog_initialize(intptr_t exinf)
+ {
++#ifndef TOPPERS_OMIT_SYSLOG
+ 	syslog_count = 0U;
+ 	syslog_head = syslog_tail = 0U;
+ 	syslog_lost = 0U;
+ 	syslog_logmask = 0U;
+ 	syslog_lowmask_not = 0U;
+-}     
++#endif
++}
+ 
+ /* 
+  *  ログ情報の出力
+@@ -130,6 +135,7 @@
+ ER
+ syslog_wri_log(uint_t prio, const SYSLOG *p_syslog)
+ {
++#ifndef TOPPERS_OMIT_SYSLOG
+ 	SIL_PRE_LOC;
+ 
+ 	LOG_SYSLOG_WRI_LOG_ENTER(prio, p_syslog);
+@@ -169,6 +175,9 @@
+ 	SIL_UNL_INT();
+ 	LOG_SYSLOG_WRI_LOG_LEAVE(E_OK);
+ 	return(E_OK);
++#else
++	return E_OK;
++#endif
+ }
+ 
+ /*
+@@ -179,6 +188,7 @@
+ ER_UINT
+ syslog_rea_log(SYSLOG *p_syslog)
+ {
++#ifndef TOPPERS_OMIT_SYSLOG
+ 	ER_UINT	ercd;
+ 	SIL_PRE_LOC;
+ 
+@@ -205,6 +215,9 @@
+ 	SIL_UNL_INT();
+ 	LOG_SYSLOG_REA_LOG_LEAVE(ercd, p_syslog);
+ 	return(ercd);
++#else
++	return E_OK;
++#endif
+ }
+ 
+ /* 
+@@ -213,10 +226,12 @@
+ ER
+ syslog_msk_log(uint_t logmask, uint_t lowmask)
+ {
++#ifndef TOPPERS_OMIT_SYSLOG
+ 	LOG_SYSLOG_MSK_LOG_ENTER(logmask, lowmask);
+ 	syslog_logmask = logmask;
+ 	syslog_lowmask_not = ~lowmask;
+ 	LOG_SYSLOG_MSK_LOG_LEAVE(E_OK);
++#endif
+ 	return(E_OK);
+ }
+ 
+@@ -226,6 +241,7 @@
+ ER_UINT
+ syslog_ref_log(T_SYSLOG_RLOG *pk_rlog)
+ {
++#ifndef TOPPERS_OMIT_SYSLOG
+ 	SIL_PRE_LOC;
+ 
+ 	LOG_SYSLOG_REF_LOG_ENTER(pk_rlog);
+@@ -238,5 +254,6 @@
+ 
+ 	SIL_UNL_INT();
+ 	LOG_SYSLOG_REF_LOG_LEAVE(pk_rlog);
++#endif
+ 	return(E_OK);
+ }
+--- syssvc/vasyslog.c	Thu Jan 15 17:52:48 1970
++++ syssvc/vasyslog.c	Thu Jan 15 17:52:48 1970
+@@ -50,6 +50,7 @@
+ void
+ syslog(uint_t prio, const char *format, ...)
+ {
++#ifndef TOPPERS_OMIT_SYSLOG
+ 	SYSLOG	syslog;
+ 	va_list	ap;
+ 	uint_t	i;
+@@ -104,4 +105,5 @@
+ 	}
+ 	va_end(ap);
+ 	(void) syslog_wri_log(prio, &syslog);
++#endif
+ }
+--- target/cq_frk_fm3_gcc/fm3_mb9bxxx.h	Thu Jan 15 17:52:48 1970
++++ target/cq_frk_fm3_gcc/fm3_mb9bxxx.h	Thu Jan 15 17:52:48 1970
+@@ -129,6 +129,7 @@
+ #define FM3_CRTRIM_BASE			(FM3_PERIPH_BASE + 0x2E000UL)
+ #define FM3_EXTI_BASE			(FM3_PERIPH_BASE + 0x30000UL)
+ #define FM3_INTREQ_BASE			(FM3_PERIPH_BASE + 0x31000UL)
++#define FM3_LCDC_BASE			(FM3_PERIPH_BASE + 0x32000UL)
+ #define FM3_GPIO_BASE			(FM3_PERIPH_BASE + 0x33000UL)
+ #define FM3_MFS0_UART_BASE		(FM3_PERIPH_BASE + 0x38000UL)
+ #define FM3_MFS1_UART_BASE		(FM3_PERIPH_BASE + 0x38100UL)
+@@ -441,6 +442,10 @@
+ #define FM3_INTREQ_DQESEL		(FM3_INTREQ_BASE + 0x204)
+ #define FM3_INTREQ_ODDPKS1		(FM3_INTREQ_BASE + 0x20F)
+ 
++#define FM3_LCDC_LCDCC1			(FM3_LCDC_BASE + 0x00)
++#define FM3_LCDC_LCDCC2			(FM3_LCDC_BASE + 0x01)
++#define FM3_LCDC_LCDCC3			(FM3_LCDC_BASE + 0x02)
++
+ #define FM3_GPIO_PFR			(FM3_GPIO_BASE + 0x000)
+ #define FM3_GPIO_PFR0			(FM3_GPIO_PFR + 0x00)
+ #define FM3_GPIO_PFR1			(FM3_GPIO_PFR + 0x04)
+@@ -527,6 +532,7 @@
+ #define FM3_GPIO_PDORE			(FM3_GPIO_PDOR + 0x38)
+ #define FM3_GPIO_PDORF			(FM3_GPIO_PDOR + 0x3C)
+ #define FM3_GPIO_ADE			(FM3_GPIO_BASE + 0x500)
++#define FM3_GPIO_SPSR			(FM3_GPIO_BASE + 0x580)
+ #define FM3_GPIO_EPFR			(FM3_GPIO_BASE + 0x600)
+ #define FM3_GPIO_EPFR00			(FM3_GPIO_EPFR + 0x00)
+ #define FM3_GPIO_EPFR01			(FM3_GPIO_EPFR + 0x04)
+--- target/cq_frk_fm3_gcc/target_config.c	Thu Jan 15 17:52:48 1970
++++ target/cq_frk_fm3_gcc/target_config.c	Thu Jan 15 17:52:48 1970
+@@ -45,6 +45,7 @@
+ 
+ #include "fm3_mb9bxxx.h"
+ #include "target_serial.h"
++#include "target_syssvc.h"
+ 
+ /*
+  *  ターゲット依存の初期化
+@@ -55,7 +56,7 @@
+ 	static uint32_t u32IoRegisterRead;
+ 
+ 	/*
+-	 *  ハードウェア・ウオッチドグ・タイマの停止
++	 *  ハードウェア・ウオッチドッグ・タイマの停止
+ 	 */
+ 	sil_wrw_mem((uint32_t*)FM3_HWWDT_WDG_LCK, 0x1ACCE551);
+ 	sil_wrw_mem((uint32_t*)FM3_HWWDT_WDG_LCK, 0xE5331AAE);
+@@ -64,27 +65,47 @@
+ 	/*
+ 	 *  クロックの設定
+ 	 */
++	//ベースクロック : 1分周
+ 	sil_wrb_mem((uint8_t*)FM3_CRG_BSC_PSR, 0);
++	//APB0 : 1分周
+ 	sil_wrb_mem((uint8_t*)FM3_CRG_APBC0_PSR, 0);
++	//APB1  APBC1EN=1 : PCLK1出力許可 : 2分周
+ 	sil_wrb_mem((uint8_t*)FM3_CRG_APBC1_PSR, APBC1_PSR_APBC1EN | 1);
++	//APB12 APBC2EN=1 : PCLK2出力許可 : 2分周
+ 	sil_wrb_mem((uint8_t*)FM3_CRG_APBC2_PSR, APBC2_PSR_APBC2EN | 1);
++	//ソフトウェアWDT : PCLK0の8分周
+ 	sil_wrb_mem((uint8_t*)FM3_CRG_SWC_PSR, SWC_PSR_TESTB | 3);
++	//トレースクロック : 1分周
+ 	sil_wrb_mem((uint8_t*)FM3_CRG_TTC_PSR, 0);
+ 
++	//サブクロック安定待ち   : 2^15 / FCRL
++	//メインクロック安定待ち : 2^17 / FCRH
+ 	sil_wrb_mem((uint8_t*)FM3_CRG_CSW_TMR, (5 << 4) | 0x0C);
+ 
++	//MOSCE=1 : メインクロック発振許可
+ 	sil_wrb_mem((uint8_t*)FM3_CRG_SCM_CTL, sil_reb_mem((uint8_t*)FM3_CRG_SCM_CTL) | SCM_CTL_MOSCE);
++	
++	//MORDY : メインクロック発振安定待ち
+ 	while (!(sil_reb_mem((uint8_t*)FM3_CRG_SCM_STR) & SCM_CTL_MOSCE));
+ 
++	//メインクロック発振
++	//メインPLLクロック安定待ち時間 : 2^9 / FCRH
+ 	sil_wrb_mem((uint8_t*)FM3_CRG_PSW_TMR, 0);
++	//PLLK PLL入力クロック分周比 : 1分周
++	//PLLM PLLのVCOクロックの分周比 : 2分周
+ 	sil_wrb_mem((uint8_t*)FM3_CRG_PLL_CTL1, 1);
++	//PLLN PLLのフィードバック分周比 : 36分周
+ 	sil_wrb_mem((uint8_t*)FM3_CRG_PLL_CTL2, 0x23);
+ 
++	//PLLE=1 : PLL発振許可
+ 	sil_wrb_mem((uint8_t*)FM3_CRG_SCM_CTL, sil_reb_mem((uint8_t*)FM3_CRG_SCM_CTL) | SCM_CTL_PLLE);
++	//PLRDY : PLL発振安定待ち
+ 	while (!(sil_reb_mem((uint8_t*)FM3_CRG_SCM_STR) & SCM_CTL_PLLE));
+ 
++	//RCS=010 : メインPLLクロック
+ 	sil_wrb_mem((uint8_t*)FM3_CRG_SCM_CTL, sil_reb_mem((uint8_t*)FM3_CRG_SCM_CTL) | (2 << 5));
+ 
++	//マスタクロックの選択が切り替わるのを待つ
+ 	do
+ 	{
+ 		u32IoRegisterRead = (sil_reb_mem((uint8_t*)FM3_CRG_SCM_CTL) & 0xE0); 
+@@ -100,15 +121,22 @@
+ 		sil_wrw_mem((uint32_t*)FM3_CRTRIM_MCR_RLR, 0x00000000);
+ 	}
+ 
++	/* ADE無効 */
++	sil_wrw_mem((uint32_t*)FM3_GPIO_ADE, 0x00000000);
++	/* VEx無効 */
++	sil_wrb_mem((uint8_t*)FM3_LCDC_LCDCC3, 0x80);
++
+ 	/*
+ 	 * コア依存の初期化
+ 	 */
+ 	core_initialize();
+ 
++#ifndef TOPPERS_OMIT_SYSLOG
+ 	/*
+ 	 *  バナー出力用のシリアル初期化
+ 	 */
+ 	target_uart_init(SIO_PORTID);
++#endif
+ } 
+ 
+ 
+@@ -136,8 +164,10 @@
+ void
+ target_fput_log(char_t c)
+ {
++#ifndef TOPPERS_OMIT_SYSLOG
+ 	if (c == '\n') {
+-		sio_pol_snd_chr('\r', SIO_PORTID);
++		sio_pol_snd_chr('\r', LOGTASK_PORTID);
+ 	}
+-	sio_pol_snd_chr(c, SIO_PORTID);
++	sio_pol_snd_chr(c, LOGTASK_PORTID);
++#endif
+ }
+--- target/cq_frk_fm3_gcc/target_stddef.h	Thu Jan 15 17:52:48 1970
++++ target/cq_frk_fm3_gcc/target_stddef.h	Thu Jan 15 17:52:48 1970
+@@ -59,7 +59,7 @@
+  *  開発環境でstdint.hが用意されている場合には，TOPPERS_STDINT_TYPE1の
+  *  マクロ定義を削除し，stdint.hをインクルードすればよい．
+  */
+-#define TOPPERS_STDINT_TYPE1
++//#define TOPPERS_STDINT_TYPE1
+ #define TOPPERS_STDFLOAT_TYPE1
+ #include "gcc/tool_stddef.h"
+ 
+--- target/cq_frk_fm3_gcc/target_timer.cfg	Thu Jan 15 17:52:48 1970
++++ target/cq_frk_fm3_gcc/target_timer.cfg	Thu Jan 15 17:52:48 1970
+@@ -1,5 +1,6 @@
+ /*
+  *    タイマドライバのコンフィギュレーションファイル
+  */
++
+ #include "target_timer.h"
+ INCLUDE("arm_m_gcc/common/core_timer.cfg");

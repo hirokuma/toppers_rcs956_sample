@@ -46,7 +46,8 @@ void main_task(intptr_t exinf)
 		default:
 			st7032i_write_string("            ");
 		}
-		dly_tsk(500);
+		HkNfcRw_RfOff();
+		dly_tsk(1000);
 	} 
 
 	HkNfcRw_Close();

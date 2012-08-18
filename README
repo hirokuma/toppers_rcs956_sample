@@ -1,0 +1,18 @@
+toppers_rcs620s_sample
+
+TOPPERS/ASP + FM3基板 + RC-S620/S + ST7032i
+
+
+NFCカードをかざすと、A or B or F をLCDに表示するだけ。
+
+libhknfcrwは別途cloneすること(Makefileでは"libhknfcrw"としている)。
+	git://github.com/hirokuma/libhknfcrw_c.git
+
+
+* 使用しているポート
+** ST7032i
+- I2C ... SOT1_2/SCK1_2 (target_i2c.c)
+- Reset ... P39 (st7032i.c)
+
+** RC-S620/S
+- SOT4_2/SIN4_2 (TOPPERS/ASPの1番ポート)

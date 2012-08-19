@@ -43,7 +43,7 @@ TOPPERS_OMIT_SYSLOG = true
 OMIT_OPTIMIZATION = true
 
 CDEFS = -DTOPPERS_OMIT_SYSLOG
-INCLUDES = -I../libhknfcrw/inc
+INCLUDES = -Isrc -I../libhknfcrw/inc -Ihknfc -Ist7032i -Ii2c -Icq_frk_fm3
 COPTS := $(COPTS) -O0
 LDFLAGS =
 LIBS  = ../libhknfcrw/libhknfcrw.a
@@ -155,7 +155,12 @@ CFLAGS = $(COPTS) $(CDEFS) $(INCLUDES)
 #  アプリケーションプログラムに関する定義
 #
 APPLNAME = rcs620s_sample
-APPLDIR = 
+APPLDIR = \
+	src \
+	cq_frk_fm3 \
+	hknfc \
+	st7032i \
+	i2c
 APPL_CFG = $(APPLNAME).cfg
 
 APPL_DIR = $(APPLDIR) $(SRCDIR)/library
@@ -172,7 +177,7 @@ else
 	target_i2c.o
 endif
 APPL_CFLAGS =
-APPL_LIBS = ../libhknfcrw/libhknfcrw.a
+APPL_LIBS =
 ifdef APPLDIR
   INCLUDES := $(INCLUDES) $(foreach dir,$(APPLDIR),-I$(dir))
 endif

@@ -1,5 +1,24 @@
---- arch/arm_m_gcc/common/core_support.S	Thu Jan 15 17:52:48 1970
-+++ arch/arm_m_gcc/common/core_support.S	Thu Jan 15 17:52:48 1970
+--- arch/arm_m_gcc/common/core_sil.h	Fri Jan 16 12:05:04 1970
++++ arch/arm_m_gcc/common/core_sil.h	Fri Jan 16 12:05:04 1970
+@@ -80,6 +80,16 @@
+ #define SIL_LOC_INT()    ((void)(TOPPERS_locked = TOPPERS_disint()))
+ #define SIL_UNL_INT()    (TOPPERS_enaint(TOPPERS_locked))
+ 
++
++Inline void
++TOPPERS_reset(void)
++{
++	(*((volatile uint32_t*)0xe000ed0c)) = 0x05fa0004;
++	TOPPERS_disint();
++	while(1) {}
++}
++
++
+ #endif /* TOPPERS_MACRO_ONLY */
+ 
+ #endif /* TOPPERS_CORE_SIL_H */
+--- arch/arm_m_gcc/common/core_support.S	Fri Jan 16 12:05:04 1970
++++ arch/arm_m_gcc/common/core_support.S	Fri Jan 16 12:05:04 1970
 @@ -41,6 +41,7 @@
  /*
   *  プロセッサ依存モジュール アセンブリ言語部（ARM-M用）
@@ -18,8 +37,8 @@
  	cpsie i               /* PRIMASK をクリア（割込みを受け付ける） */
  	msr   basepri, r5     /* CPUロック状態へ */ 
  #endif /* TOPPERS_CUSTOM_IDLE */
---- arch/gcc/tool_stddef.h	Thu Jan 15 17:52:48 1970
-+++ arch/gcc/tool_stddef.h	Thu Jan 15 17:52:48 1970
+--- arch/gcc/tool_stddef.h	Fri Jan 16 12:05:04 1970
++++ arch/gcc/tool_stddef.h	Fri Jan 16 12:05:04 1970
 @@ -176,6 +176,13 @@
  #define INT_LEAST8_MIN		INT8_MIN
  #define UINT_LEAST8_MAX		INT8_MAX
@@ -34,8 +53,8 @@
  #endif /* TOPPERS_STDINT_TYPE1 */
  
  /*
---- include/t_syslog.h	Thu Jan 15 17:52:48 1970
-+++ include/t_syslog.h	Thu Jan 15 17:52:48 1970
+--- include/t_syslog.h	Fri Jan 16 12:05:04 1970
++++ include/t_syslog.h	Fri Jan 16 12:05:04 1970
 @@ -277,11 +277,6 @@
  {
  }
@@ -48,8 +67,8 @@
  #endif /* TOPPERS_OMIT_SYSLOG */
  
  /*
---- library/log_output.c	Thu Jan 15 17:52:48 1970
-+++ library/log_output.c	Thu Jan 15 17:52:48 1970
+--- library/log_output.c	Fri Jan 16 12:05:04 1970
++++ library/log_output.c	Fri Jan 16 12:05:04 1970
 @@ -46,6 +46,7 @@
  #include <t_stddef.h>
  #include <t_syslog.h>
@@ -110,8 +129,8 @@
  	(*putc)('\n');
 +#endif	//TOPPERS_OMIT_SYSLOG
  }
---- library/strerror.c	Thu Jan 15 17:52:48 1970
-+++ library/strerror.c	Thu Jan 15 17:52:48 1970
+--- library/strerror.c	Fri Jan 16 12:05:04 1970
++++ library/strerror.c	Fri Jan 16 12:05:04 1970
 @@ -49,6 +49,7 @@
  const char *
  itron_strerror(ER ercd)
@@ -128,8 +147,8 @@
 +	return "";
 +#endif	//TOPPERS_OMIT_SYSLOG
  }
---- syssvc/banner.c	Thu Jan 15 17:52:48 1970
-+++ syssvc/banner.c	Thu Jan 15 17:52:48 1970
+--- syssvc/banner.c	Fri Jan 16 12:05:04 1970
++++ syssvc/banner.c	Fri Jan 16 12:05:04 1970
 @@ -45,9 +45,11 @@
   */
  
@@ -158,8 +177,8 @@
  				TKERNEL_PRVER & 0x0fU);
 +#endif	//TOPPERS_OMIT_SYSLOG
  }
---- syssvc/logtask.c	Thu Jan 15 17:52:48 1970
-+++ syssvc/logtask.c	Thu Jan 15 17:52:48 1970
+--- syssvc/logtask.c	Fri Jan 16 12:05:04 1970
++++ syssvc/logtask.c	Fri Jan 16 12:05:04 1970
 @@ -45,12 +45,14 @@
   */
  
@@ -231,8 +250,8 @@
  	}
 +#endif	//TOPPERS_OMIT_SYSLOG
  }
---- syssvc/serial.c	Thu Jan 15 17:52:48 1970
-+++ syssvc/serial.c	Thu Jan 15 17:52:48 1970
+--- syssvc/serial.c	Fri Jan 16 12:05:04 1970
++++ syssvc/serial.c	Fri Jan 16 12:05:04 1970
 @@ -51,6 +51,10 @@
  #include "serial.h"
  #include "kernel_cfg.h"
@@ -524,8 +543,8 @@
 +	return true;
 +#endif	//NO_SERIAL
  }
---- syssvc/syslog.c	Thu Jan 15 17:52:48 1970
-+++ syssvc/syslog.c	Thu Jan 15 17:52:48 1970
+--- syssvc/syslog.c	Fri Jan 16 12:05:04 1970
++++ syssvc/syslog.c	Fri Jan 16 12:05:04 1970
 @@ -86,6 +86,7 @@
  #define LOG_SYSLOG_REF_LOG_LEAVE(pk_rlog)
  #endif /* LOG_SYSLOG_REF_LOG_LEAVE */
@@ -622,8 +641,8 @@
 +#endif
  	return(E_OK);
  }
---- syssvc/vasyslog.c	Thu Jan 15 17:52:48 1970
-+++ syssvc/vasyslog.c	Thu Jan 15 17:52:48 1970
+--- syssvc/vasyslog.c	Fri Jan 16 12:05:04 1970
++++ syssvc/vasyslog.c	Fri Jan 16 12:05:04 1970
 @@ -50,6 +50,7 @@
  void
  syslog(uint_t prio, const char *format, ...)
@@ -638,8 +657,8 @@
  	(void) syslog_wri_log(prio, &syslog);
 +#endif
  }
---- target/cq_frk_fm3_gcc/fm3_mb9bxxx.h	Thu Jan 15 17:52:48 1970
-+++ target/cq_frk_fm3_gcc/fm3_mb9bxxx.h	Thu Jan 15 17:52:48 1970
+--- target/cq_frk_fm3_gcc/fm3_mb9bxxx.h	Fri Jan 16 12:05:04 1970
++++ target/cq_frk_fm3_gcc/fm3_mb9bxxx.h	Fri Jan 16 12:05:04 1970
 @@ -129,6 +129,7 @@
  #define FM3_CRTRIM_BASE			(FM3_PERIPH_BASE + 0x2E000UL)
  #define FM3_EXTI_BASE			(FM3_PERIPH_BASE + 0x30000UL)
@@ -667,8 +686,8 @@
  #define FM3_GPIO_EPFR			(FM3_GPIO_BASE + 0x600)
  #define FM3_GPIO_EPFR00			(FM3_GPIO_EPFR + 0x00)
  #define FM3_GPIO_EPFR01			(FM3_GPIO_EPFR + 0x04)
---- target/cq_frk_fm3_gcc/target_config.c	Thu Jan 15 17:52:48 1970
-+++ target/cq_frk_fm3_gcc/target_config.c	Thu Jan 15 17:52:48 1970
+--- target/cq_frk_fm3_gcc/target_config.c	Fri Jan 16 12:05:04 1970
++++ target/cq_frk_fm3_gcc/target_config.c	Fri Jan 16 12:05:04 1970
 @@ -45,6 +45,7 @@
  
  #include "fm3_mb9bxxx.h"
@@ -770,8 +789,8 @@
 +	sio_pol_snd_chr(c, LOGTASK_PORTID);
 +#endif
  }
---- target/cq_frk_fm3_gcc/target_stddef.h	Thu Jan 15 17:52:48 1970
-+++ target/cq_frk_fm3_gcc/target_stddef.h	Thu Jan 15 17:52:48 1970
+--- target/cq_frk_fm3_gcc/target_stddef.h	Fri Jan 16 12:05:04 1970
++++ target/cq_frk_fm3_gcc/target_stddef.h	Fri Jan 16 12:05:04 1970
 @@ -59,7 +59,7 @@
   *  開発環境でstdint.hが用意されている場合には，TOPPERS_STDINT_TYPE1の
   *  マクロ定義を削除し，stdint.hをインクルードすればよい．
@@ -781,8 +800,8 @@
  #define TOPPERS_STDFLOAT_TYPE1
  #include "gcc/tool_stddef.h"
  
---- target/cq_frk_fm3_gcc/target_timer.cfg	Thu Jan 15 17:52:48 1970
-+++ target/cq_frk_fm3_gcc/target_timer.cfg	Thu Jan 15 17:52:48 1970
+--- target/cq_frk_fm3_gcc/target_timer.cfg	Fri Jan 16 12:05:04 1970
++++ target/cq_frk_fm3_gcc/target_timer.cfg	Fri Jan 16 12:05:04 1970
 @@ -1,5 +1,6 @@
  /*
   *    タイマドライバのコンフィギュレーションファイル

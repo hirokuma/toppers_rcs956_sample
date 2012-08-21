@@ -7,11 +7,14 @@
 #include "st7032i.h"
 
 #include "HkNfcRw.h"
+#include "HkNfcA.h"
+#include "HkNfcF.h"
 
 
 void main_task(intptr_t exinf)
 {
 	HkNfcType type;
+	bool bLoop = true;
 
 	st7032i_task_init();
 
@@ -21,31 +24,54 @@ void main_task(intptr_t exinf)
 		ext_tsk();
 	}
 
+	//最初は(0, 0)にカーソルがある
 	st7032i_write_string("Please card.");
 
-	while(1) {
+	while(bLoop) {
+		const char *pStr;
+		
 		type = HkNfcRw_Detect(true, true, true);
+		HkNfcRw_RfOff();
 		st7032i_move_pos(1, 1);
 		switch(type) {
 		case HKNFCTYPE_A:
 			CQFM3_LED_ON();
-			st7032i_write_string("NFC-A card !");
+			pStr = "NFC-A";
+			{
+				HkNfcASelRes selres = HkNfcA_GetSelRes();
+				if(HKNFCA_IS_SELRES_TPE(selres)) {
+					bLoop = false;
+				} else {
+					TOPPERS_reset();
+				}
+			}
 			break;
 		case HKNFCTYPE_B:
 			CQFM3_LED_ON();
-			st7032i_write_string("NFC-B card !");
+			pStr = "NFC-B";
 			break;
 		case HKNFCTYPE_F:
 			CQFM3_LED_ON();
-			st7032i_write_string("NFC-F card !");
+			pStr = "NFC-F";
+			{
+				uint8_t idm[NFCID2_LEN];
+				if(HkNfcRw_GetNfcId(idm) != 0) {
+					if(HKNFCF_IS_NFCID_TPE(idm)) {
+						bLoop = false;
+					}
+				}
+			}
 			break;
 		default:
 			CQFM3_LED_OFF();
-			st7032i_write_string("            ");
+			pStr = "     ";
+			break;
 		}
-		HkNfcRw_RfOff();
+		st7032i_write_string(pStr);
 		dly_tsk(1000);
-	} 
+	}
+
+	st7032i_write_string(":TPE");
 
 	HkNfcRw_Close();
 	ext_tsk();

@@ -9,6 +9,10 @@
 #include "HkNfcRw.h"
 #include "HkNfcA.h"
 #include "HkNfcF.h"
+#include "HkNfcNdef.h"
+#include "HkNfcSnep.h"
+
+static void _exit(const char *pStr);
 
 
 void main_task(intptr_t exinf)
@@ -72,6 +76,41 @@ void main_task(intptr_t exinf)
 	}
 
 	st7032i_write_string(":TPE");
+	st7032i_move_pos(0, 0);
+	st7032i_write_string("            ");
+
+	HkNfcNdefMsg msg;
+	b = HkNfcNdef_CreateText(&msg, "hiro99ma", 8, LANGCODE_EN);
+	if(!b) {
+		_exit("fail:NDEF create");
+	}
+
+	b = HkNfcSnep_PutStart(HKNFCSNEP_MD_INITIATOR, &msg);
+	if(!b) {
+		_exit("fail:PutStart");
+	}
+	
+	while(HkNfcSnep_Poll()) {
+		;
+	}
+	
+	if(HkNfcSnep_GetResult() != HKNFCSNEP_SUCCESS) {
+		_exit("fail:Put");
+	}
+
+	CQFM3_LED_OFF();
+	st7032i_move_pos(0, 0);
+	st7032i_write_string("SNEP success!");
+
+	HkNfcRw_Close();
+	ext_tsk();
+}
+
+
+static void _exit(const char *pStr)
+{
+	st7032i_move_pos(0, 0);
+	st7032i_write_string(pStr);
 
 	HkNfcRw_Close();
 	ext_tsk();

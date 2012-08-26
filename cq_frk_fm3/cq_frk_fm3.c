@@ -1,9 +1,43 @@
+#include <kernel.h>
+#include "kernel_cfg.h"
 #include "cq_frk_fm3.h"
+#include "cq_frk_fm3_tsk.h"
+#include "cq_frk_fm3_loc.h"
 
-void cqfrkfm3_hw_init(intptr_t exinf)
+
+void cq_frk_fm3_led_ctrl(CqFrkFm3Led ctrl, uint16_t period, RELTIM span)
 {
-	*(uint32_t *)FM3_GPIO_PFRF &= ~(0x08);	//gpio
-	*(uint32_t *)FM3_GPIO_PZRF |=  (0x08);	//open-drain
-	*(uint32_t *)FM3_GPIO_DDRF |=  (0x08);	//output
-	CQFM3_LED_OFF();
+	ER ercd;
+	T_RTSK rtsk;
+	
+	ercd = ref_tsk(CQFRKFM3_TASK, &rtsk);
+	if(ercd != E_OK) {
+		return;
+	}
+	
+	
+	switch(ctrl) {
+	case CQFRKFM3_LED_OFF:
+		cqfrkfm3_alm_hdr(0);
+		if(rtsk.tskstat == TTS_RUN) {
+			ter_tsk(CQFRKFM3_TASK);
+		}
+		CQFRKFM3_GPIO_LED_OFF();
+		break;
+
+	case CQFRKFM3_LED_ON:
+		cqfrkfm3_alm_hdr(0);
+		if(rtsk.tskstat == TTS_RUN) {
+			ter_tsk(CQFRKFM3_TASK);
+		}
+		CQFRKFM3_GPIO_LED_ON();
+		break;
+
+	case CQFRKFM3_LED_BLINK:
+		cqfrkfm3_alm_start(period, span);
+		if(rtsk.tskstat != TTS_RUN) {
+			act_tsk(CQFRKFM3_TASK);
+		}
+		break;
+	}
 }

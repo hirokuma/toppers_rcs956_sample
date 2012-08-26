@@ -171,6 +171,7 @@ ifdef USE_CXX
 else
   APPL_COBJS = $(APPLNAME).o \
 	cq_frk_fm3.o	\
+	cq_frk_fm3_tsk.o	\
 	hk_devaccess_toppers.o	\
 	hk_misc.o	\
 	st7032i.o	\

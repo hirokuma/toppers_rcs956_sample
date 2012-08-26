@@ -129,6 +129,8 @@ void st7032i_task_init(void)
 
 /**
  * 画面クリア
+ * 
+ * @note		- 同期処理.
  */
 void st7032i_clear(void)
 {
@@ -141,8 +143,8 @@ void st7032i_clear(void)
  * 
  * @param[in]	x	X座標(0～15)
  * @param[in]	y	Y座標(0 or else)
- * 
- * Yが0以外なら、強制的に1として扱う.
+ * @note		- 同期処理.
+ * 				- Yが0以外なら、強制的に1として扱う.
  */
 void st7032i_move_pos(int x, int y)
 {
@@ -164,6 +166,7 @@ void st7032i_move_pos(int x, int y)
  * 現在のカーソル位置から文字列出力
  * 
  * @param[in]	pStr	文字列
+ * @note		- 同期処理.
  */
 void st7032i_write_string(const char* pStr)
 {
@@ -179,6 +182,8 @@ void st7032i_write_string(const char* pStr)
  * @param[in]	cmd		コマンド
  * @param[in]	data	データ
  * @param[in]	wait	待ち時間[msec]
+ * @return		uITRONエラー値
+ * @note		- 同期処理.
  */
 static ER _write_lcd(uint8_t cmd, uint8_t data, uint16_t wait)
 {
